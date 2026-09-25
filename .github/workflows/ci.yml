@@ -27,6 +27,7 @@ jobs:
         with:
           go-version: '1.22'
           check-latest: true
+          cache-dependency-path: services/${{ matrix.service }}/go.sum
 
       - name: Verify Go Module & Vet Code
         run: |
@@ -70,8 +71,8 @@ jobs:
 
       - name: Verify Worker Artifacts
         run: |
-          test -f services/worker-ts/dist/index.js
-          echo "Verified services/worker-ts/dist/index.js exists"
+          test -f services/worker-ts/dist/server.js
+          echo "Verified services/worker-ts/dist/server.js exists"
 
   validate-docker-compose-and-infra:
     name: Validate Compose & Deployment Scripts
