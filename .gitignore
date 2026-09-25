@@ -1,0 +1,44 @@
+# Binaries
+*_service
+*.exe
+*.test
+*.out
+
+# Databases & Runtime State
+*.db
+*.db-shm
+*.db-wal
+data/
+sqlite_data/
+*.sqlite
+*.sqlite3
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.production.example
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker volume data
+volumes/
+mongo_data/
+minio_data/
+redis_data/

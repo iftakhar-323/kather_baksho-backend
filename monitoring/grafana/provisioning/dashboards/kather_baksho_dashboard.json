@@ -1,0 +1,124 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": true,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Kather_Baksho Traffic & Performance",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "id": 2,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "title": "HTTP Request Throughput (QPS)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[1m])) by (method, status)",
+          "legendFormat": "{{method}} {{status}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" }
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "id": 3,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" } },
+      "title": "HTTP Latency (p95 & Average)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p95 latency"
+        },
+        {
+          "expr": "rate(http_request_duration_seconds_sum[1m]) / rate(http_request_duration_seconds_count[1m])",
+          "legendFormat": "avg latency"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+      "id": 4,
+      "title": "System & Runtime Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "short" }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 10 },
+      "id": 5,
+      "title": "In-Flight Requests",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "http_requests_in_flight",
+          "legendFormat": "Active Requests"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "unit": "short" }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 10 },
+      "id": 6,
+      "title": "Active Goroutines",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "go_goroutines",
+          "legendFormat": "Goroutines"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "bytes" }
+      },
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 10 },
+      "id": 7,
+      "title": "Heap Allocation",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "go_memstats_heap_alloc_bytes",
+          "legendFormat": "Heap Alloc"
+        }
+      ]
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["kather_baksho", "ecommerce"],
+  "time": { "from": "now-15m", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Kather_Baksho Observability Dashboard",
+  "uid": "kather_baksho-main-dashboard",
+  "version": 1
+}
+

@@ -1,0 +1,57 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "kather-baksho.fullname" . }}-ingress
+  labels:
+    {{- include "kather-baksho.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingress.className | quote }}
+spec:
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /api/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: {{ .Values.services.orderService.port }}
+          - path: /api/products
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog-service
+                port:
+                  number: {{ .Values.services.catalogService.port }}
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: {{ .Values.services.authService.port }}
+          - path: /api/community
+            pathType: Prefix
+            backend:
+              service:
+                name: community-care-service
+                port:
+                  number: {{ .Values.services.communityCareService.port }}
+          - path: /api/iot
+            pathType: Prefix
+            backend:
+              service:
+                name: iot-ai-service
+                port:
+                  number: {{ .Values.services.iotAiService.port }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: {{ .Values.services.frontend.port }}
+{{- end }}

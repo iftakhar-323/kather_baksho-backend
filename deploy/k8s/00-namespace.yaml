@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kather-baksho
+  labels:
+    app.kubernetes.io/name: kather-baksho
+    app.kubernetes.io/part-of: botanical-iot-platform
+    environment: production
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: kather-baksho-quota
+  namespace: kather-baksho
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "50"

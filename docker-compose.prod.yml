@@ -1,0 +1,294 @@
+services:
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: kb-order-prod
+    restart: always
+    environment:
+      - PORT=8081
+      - DB_DRIVER=${DB_DRIVER:-sqlite}
+      - DB_PATH=/app/data/orders.db
+      - CATALOG_DB_PATH=/app/data/catalog.db
+      - AUTH_DB_PATH=/app/data/auth.db
+      - REDIS_ADDR=redis:6379
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB_NAME=kather_baksho_iot
+      - WORKER_TS_URL=http://worker-ts:8083
+      - IOT_AI_SERVICE_URL=http://iot-ai-service:8089
+      - CATALOG_SERVICE_URL=http://catalog-service:8087
+      - AUTH_SERVICE_URL=http://auth-service:8084
+      - COMMUNITY_CARE_SERVICE_URL=http://community-care-service:8088
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - JWT_SECRET=${JWT_SECRET}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    volumes:
+      - sqlite_data:/app/data
+    networks:
+      - kb-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker-ts:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  catalog-service:
+    build:
+      context: ./services/catalog-service
+      dockerfile: Dockerfile
+    container_name: kb-catalog-prod
+    restart: always
+    environment:
+      - PORT=8087
+      - DB_DRIVER=sqlite
+      - DB_PATH=/app/data/catalog.db
+      - REDIS_ADDR=redis:6379
+      - MINIO_ENDPOINT=minio:9000
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - sqlite_data:/app/data
+    networks:
+      - kb-net
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8087/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: kb-auth-prod
+    restart: always
+    environment:
+      - PORT=8084
+      - DB_DRIVER=sqlite
+      - DB_PATH=/app/data/auth.db
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - sqlite_data:/app/data
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8084/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  community-care-service:
+    build:
+      context: ./services/community-care-service
+      dockerfile: Dockerfile
+    container_name: kb-community-care-prod
+    restart: always
+    environment:
+      - PORT=8088
+      - DB_DRIVER=sqlite
+      - DB_PATH=/app/data/community.db
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - sqlite_data:/app/data
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8088/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  iot-ai-service:
+    build:
+      context: ./services/iot-ai-service
+      dockerfile: Dockerfile
+    container_name: kb-iot-ai-prod
+    restart: always
+    environment:
+      - PORT=8089
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB_NAME=kather_baksho_iot
+      - REDIS_ADDR=redis:6379
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - JWT_SECRET=${JWT_SECRET}
+      - MQTT_BROKER_URL=tcp://mosquitto:1883
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    networks:
+      - kb-net
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8089/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  worker-ts:
+    build:
+      context: ./services/worker-ts
+      dockerfile: Dockerfile
+    container_name: kb-worker-ts-prod
+    restart: always
+    environment:
+      - PORT=8083
+      - NODE_ENV=production
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8083/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  traefik:
+    image: traefik:v3.1
+    container_name: kb-traefik-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./monitoring/traefik/dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro
+      - traefik_certs:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - "--providers.file.filename=/etc/traefik/dynamic_conf.yml"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.email=${ACME_EMAIL:-admin@katherbaksho.com}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    networks:
+      - kb-net
+    depends_on:
+      - order-service
+      - catalog-service
+      - auth-service
+      - community-care-service
+      - iot-ai-service
+
+  redis:
+    image: redis:7-alpine
+    container_name: kb-redis-prod
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  mongo:
+    image: mongo:7.0
+    container_name: kb-mongo-prod
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: kb-minio-prod
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-kather_baksho_admin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-kather_baksho_secret_key_123}
+    volumes:
+      - minio_data:/data
+    networks:
+      - kb-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: kb-mosquitto-prod
+    restart: always
+    volumes:
+      - ./monitoring/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+    networks:
+      - kb-net
+
+volumes:
+  sqlite_data:
+  redis_data:
+  mongo_data:
+  minio_data:
+  mosquitto_data:
+  traefik_certs:
+
+networks:
+  kb-net:
+    driver: bridge

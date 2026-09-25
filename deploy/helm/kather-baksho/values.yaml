@@ -1,0 +1,145 @@
+# Default values for kather-baksho.
+# This is a YAML-formatted file.
+
+global:
+  environment: production
+  namespace: kather-baksho
+
+ingress:
+  enabled: true
+  className: traefik
+  host: katherbox.local
+  tls:
+    enabled: false
+    secretName: katherbox-tls
+
+storage:
+  sqliteSize: 10Gi
+  mongoSize: 20Gi
+  redisSize: 5Gi
+  minioSize: 50Gi
+
+services:
+  orderService:
+    replicaCount: 2
+    image:
+      repository: kather_baksho-order-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    port: 8081
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 70
+
+  catalogService:
+    replicaCount: 2
+    image:
+      repository: kather_baksho-catalog-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    port: 8087
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 8
+      targetCPUUtilizationPercentage: 75
+
+  authService:
+    replicaCount: 2
+    image:
+      repository: kather_baksho-auth-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    port: 8084
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+  communityCareService:
+    replicaCount: 1
+    image:
+      repository: kather_baksho-community-care-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    port: 8088
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+  iotAiService:
+    replicaCount: 1
+    image:
+      repository: kather_baksho-iot-ai-service
+      tag: latest
+      pullPolicy: IfNotPresent
+    port: 8089
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+  workerTs:
+    replicaCount: 1
+    image:
+      repository: kather_baksho-worker-ts
+      tag: latest
+      pullPolicy: IfNotPresent
+    port: 8083
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 100m
+        memory: 256Mi
+
+  frontend:
+    replicaCount: 2
+    image:
+      repository: kather_baksho-frontend
+      tag: latest
+      pullPolicy: IfNotPresent
+    port: 80
+    resources:
+      limits:
+        cpu: 250m
+        memory: 256Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+
+config:
+  ginMode: "release"
+  allowedOrigins: "*"
+  smsProvider: "logger"
+
+secrets:
+  jwtSecret: "katherbox_production_k8s_jwt_super_secure_2026"
+  paymentSecret: "katherbox_default_secure_payment_hmac_secret_2026"

@@ -1,0 +1,14 @@
+apiVersion: v2
+name: kather-baksho
+description: Production-grade Helm chart for Kather Baksho Botanical IoT & Microservices E-Commerce Platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - ecommerce
+  - iot
+  - botany
+  - microservices
+maintainers:
+  - name: Kather Baksho DevOps Team
+    email: devops@katherbox.local

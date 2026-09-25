@@ -1,0 +1,132 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kather-baksho-ingress
+  namespace: kather-baksho
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
+spec:
+  rules:
+    - host: katherbox.local
+      http:
+        paths:
+          # Auth Service
+          - path: /api/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8084
+          # Catalog Service
+          - path: /api/products
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog-service
+                port:
+                  number: 8087
+          - path: /api/categories
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog-service
+                port:
+                  number: 8087
+          - path: /api/reviews
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog-service
+                port:
+                  number: 8087
+          # Order & Payment Service
+          - path: /api/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8081
+          - path: /api/payments
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8081
+          - path: /api/cart
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8081
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service
+                port:
+                  number: 8081
+          # Community & Plant Care Service
+          - path: /api/community
+            pathType: Prefix
+            backend:
+              service:
+                name: community-care-service
+                port:
+                  number: 8088
+          - path: /api/care
+            pathType: Prefix
+            backend:
+              service:
+                name: community-care-service
+                port:
+                  number: 8088
+          - path: /api/subscriptions
+            pathType: Prefix
+            backend:
+              service:
+                name: community-care-service
+                port:
+                  number: 8088
+          # IoT Telemetry & AI Diagnostic Service
+          - path: /api/iot
+            pathType: Prefix
+            backend:
+              service:
+                name: iot-ai-service
+                port:
+                  number: 8089
+          - path: /api/ai
+            pathType: Prefix
+            backend:
+              service:
+                name: iot-ai-service
+                port:
+                  number: 8089
+          - path: /api/ml
+            pathType: Prefix
+            backend:
+              service:
+                name: iot-ai-service
+                port:
+                  number: 8089
+          # Worker TS PDF Generator
+          - path: /api/invoice
+            pathType: Prefix
+            backend:
+              service:
+                name: worker-ts
+                port:
+                  number: 8083
+          # Frontend SPA root fallback
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80

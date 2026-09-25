@@ -1,0 +1,384 @@
+services:
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: kather_baksho-order
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - PORT=8081
+      - DB_DRIVER=${DB_DRIVER:-sqlite}
+      - DB_PATH=/app/data/orders.db
+      - CATALOG_DB_PATH=/app/data/catalog.db
+      - AUTH_DB_PATH=/app/data/auth.db
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-kather_baksho}
+      - DB_PASSWORD=${DB_PASSWORD:-kather_baksho_secret}
+      - DB_NAME=${DB_NAME:-kather_baksho}
+      - DB_PATH=/app/data/orders.db
+      - REDIS_ADDR=redis:6379
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB_NAME=kather_baksho_iot
+      - WORKER_TS_URL=http://worker-ts:8083
+      - IOT_AI_SERVICE_URL=http://iot-ai-service:8089
+      - CATALOG_SERVICE_URL=http://catalog-service:8087
+      - AUTH_SERVICE_URL=http://auth-service:8084
+      - COMMUNITY_CARE_SERVICE_URL=http://community-care-service:8088
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=*
+      - JWT_SECRET=${JWT_SECRET:-kather_baksho_docker_default_change_me}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    volumes:
+      - sqlite_data:/app/data
+    networks:
+      default:
+        aliases:
+          - backend
+          - order-service
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker-ts:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      iot-ai-service:
+        condition: service_healthy
+      catalog-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      community-care-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8081/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`) || PathPrefix(`/health`) || PathPrefix(`/metrics`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.routers.backend.priority=10"
+      - "traefik.http.services.backend.loadbalancer.server.port=8081"
+
+  worker-ts:
+    build:
+      context: ./services/worker-ts
+      dockerfile: Dockerfile
+    container_name: kather_baksho-worker-ts
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    environment:
+      - PORT=8083
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8083/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.worker.rule=PathPrefix(`/worker`)"
+      - "traefik.http.routers.worker.entrypoints=web"
+      - "traefik.http.routers.worker.priority=20"
+      - "traefik.http.middlewares.worker-stripprefix.stripprefix.prefixes=/worker"
+      - "traefik.http.routers.worker.middlewares=worker-stripprefix"
+      - "traefik.http.services.worker.loadbalancer.server.port=8083"
+
+  iot-ai-service:
+    build:
+      context: ./services/iot-ai-service
+      dockerfile: Dockerfile
+    container_name: kather_baksho-iot-ai
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    environment:
+      - PORT=8089
+      - MONGO_URI=mongodb://mongo:27017
+      - MONGO_DB_NAME=kather_baksho_iot
+      - REDIS_ADDR=redis:6379
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=*
+      - JWT_SECRET=${JWT_SECRET:-kather_baksho_docker_default_change_me}
+      - MQTT_BROKER_URL=tcp://mosquitto:1883
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8089/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.iot-ai.rule=PathPrefix(`/api/iot`) || PathPrefix(`/api/ai`) || PathPrefix(`/api/ml`)"
+      - "traefik.http.routers.iot-ai.entrypoints=web"
+      - "traefik.http.routers.iot-ai.priority=30"
+      - "traefik.http.services.iot-ai.loadbalancer.server.port=8089"
+
+  catalog-service:
+    build:
+      context: ./services/catalog-service
+      dockerfile: Dockerfile
+    container_name: kather_baksho-catalog
+    restart: unless-stopped
+    ports:
+      - "8087:8087"
+    environment:
+      - PORT=8087
+      - DB_DRIVER=sqlite
+      - DB_PATH=/app/data/catalog.db
+      - REDIS_ADDR=redis:6379
+      - MINIO_ENDPOINT=minio:9000
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=*
+      - JWT_SECRET=${JWT_SECRET:-kather_baksho_docker_default_change_me}
+    volumes:
+      - sqlite_data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8087/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.catalog.rule=PathPrefix(`/api/products`) || PathPrefix(`/api/categories`) || PathPrefix(`/api/media`) || PathPrefix(`/api/wishlist`) || PathPrefix(`/api/reviews`)"
+      - "traefik.http.routers.catalog.entrypoints=web"
+      - "traefik.http.routers.catalog.priority=25"
+      - "traefik.http.services.catalog.loadbalancer.server.port=8087"
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: kather_baksho-auth
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    environment:
+      - PORT=8084
+      - DB_DRIVER=sqlite
+      - DB_PATH=/app/data/auth.db
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=*
+      - JWT_SECRET=${JWT_SECRET:-kather_baksho_docker_default_change_me}
+    volumes:
+      - sqlite_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8084/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth`) || PathPrefix(`/api/addresses`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.routers.auth.priority=25"
+      - "traefik.http.services.auth.loadbalancer.server.port=8084"
+
+  community-care-service:
+    build:
+      context: ./services/community-care-service
+      dockerfile: Dockerfile
+    container_name: kather_baksho-community-care
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      - PORT=8088
+      - DB_DRIVER=sqlite
+      - DB_PATH=/app/data/community.db
+      - AUTH_DB_PATH=/app/data/auth.db
+      - GIN_MODE=release
+      - ALLOWED_ORIGINS=*
+      - JWT_SECRET=${JWT_SECRET:-kather_baksho_docker_default_change_me}
+    volumes:
+      - sqlite_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8088/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.community-care.rule=PathPrefix(`/api/community`) || PathPrefix(`/api/blog`) || PathPrefix(`/api/journal`) || PathPrefix(`/api/care-schedule`) || PathPrefix(`/api/care-calendar`) || PathPrefix(`/api/consultations`) || PathPrefix(`/api/subscriptions`)"
+      - "traefik.http.routers.community-care.entrypoints=web"
+      - "traefik.http.routers.community-care.priority=25"
+      - "traefik.http.services.community-care.loadbalancer.server.port=8088"
+
+  traefik:
+    image: traefik:v3.1
+    container_name: kather_baksho-traefik
+    restart: unless-stopped
+    ports:
+      - "8085:80"
+      - "8086:8080"
+    volumes:
+      - ./monitoring/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./monitoring/traefik/dynamic_conf.yml:/etc/traefik/dynamic_conf.yml:ro
+    depends_on:
+      - order-service
+      - iot-ai-service
+      - catalog-service
+      - auth-service
+
+  redis:
+    image: redis:7-alpine
+    container_name: kather_baksho-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: kather_baksho-postgres
+    restart: unless-stopped
+    profiles:
+      - postgres
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=kather_baksho
+      - POSTGRES_PASSWORD=kather_baksho_secret
+      - POSTGRES_DB=kather_baksho
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: kather_baksho-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/spm_rules.yml:/etc/prometheus/spm_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    depends_on:
+      - order-service
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: kather_baksho-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  mongo:
+    image: mongo:7.0
+    container_name: kather_baksho-mongo
+    restart: unless-stopped
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: kather_baksho-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=kather_baksho_admin
+      - MINIO_ROOT_PASSWORD=kather_baksho_s3_secret
+    ports:
+      - "9005:9000"
+      - "9006:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: kather_baksho-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+      - "9002:9001"
+    volumes:
+      - ./monitoring/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto_data:/mosquitto/data
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: kather_baksho-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+      - PROMETHEUS_QUERY_SUPPORT_SPANMETRICS_CONNECTOR=true
+      - LOG_LEVEL=debug
+    depends_on:
+      - prometheus
+
+volumes:
+  sqlite_data:
+    driver: local
+  redis_data:
+    driver: local
+  mongo_data:
+    driver: local
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  minio_data:
+    driver: local
+  mosquitto_data:
+    driver: local

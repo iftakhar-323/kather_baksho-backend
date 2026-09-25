@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kather-baksho.fullname" . }}-config
+  labels:
+    {{- include "kather-baksho.labels" . | nindent 4 }}
+data:
+  GIN_MODE: {{ .Values.config.ginMode | quote }}
+  ALLOWED_ORIGINS: {{ .Values.config.allowedOrigins | quote }}
+  SMS_PROVIDER: {{ .Values.config.smsProvider | quote }}
+  REDIS_ADDR: "redis-service:6379"
+  MONGO_URI: "mongodb://mongo-service:27017"
+  MONGO_DB_NAME: "kather_baksho_iot"
+  ORDER_SERVICE_URL: "http://order-service:8081"
+  CATALOG_SERVICE_URL: "http://catalog-service:8087"
+  AUTH_SERVICE_URL: "http://auth-service:8084"
+  COMMUNITY_CARE_SERVICE_URL: "http://community-care-service:8088"
+  IOT_AI_SERVICE_URL: "http://iot-ai-service:8089"
+  WORKER_TS_URL: "http://worker-ts:8083"

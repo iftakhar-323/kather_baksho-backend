@@ -1,0 +1,402 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: kather-baksho
+  labels:
+    app: order-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+    spec:
+      containers:
+        - name: order-service
+          image: kather_baksho-order-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: kather-baksho-config
+            - secretRef:
+                name: kather-baksho-secret
+          env:
+            - name: PORT
+              value: "8081"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/data
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: sqlite-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: order-service
+  ports:
+    - port: 8081
+      targetPort: 8081
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+  namespace: kather-baksho
+  labels:
+    app: catalog-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      containers:
+        - name: catalog-service
+          image: kather_baksho-catalog-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8087
+          envFrom:
+            - configMapRef:
+                name: kather-baksho-config
+            - secretRef:
+                name: kather-baksho-secret
+          env:
+            - name: PORT
+              value: "8087"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8087
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8087
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/data
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: sqlite-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: catalog-service
+  ports:
+    - port: 8087
+      targetPort: 8087
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: kather-baksho
+  labels:
+    app: auth-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+    spec:
+      containers:
+        - name: auth-service
+          image: kather_baksho-auth-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8084
+          envFrom:
+            - configMapRef:
+                name: kather-baksho-config
+            - secretRef:
+                name: kather-baksho-secret
+          env:
+            - name: PORT
+              value: "8084"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8084
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8084
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/data
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: sqlite-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - port: 8084
+      targetPort: 8084
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: community-care-service
+  namespace: kather-baksho
+  labels:
+    app: community-care-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: community-care-service
+  template:
+    metadata:
+      labels:
+        app: community-care-service
+    spec:
+      containers:
+        - name: community-care-service
+          image: kather_baksho-community-care-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8088
+          envFrom:
+            - configMapRef:
+                name: kather-baksho-config
+            - secretRef:
+                name: kather-baksho-secret
+          env:
+            - name: PORT
+              value: "8088"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8088
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8088
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/data
+      volumes:
+        - name: shared-data
+          persistentVolumeClaim:
+            claimName: sqlite-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: community-care-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: community-care-service
+  ports:
+    - port: 8088
+      targetPort: 8088
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iot-ai-service
+  namespace: kather-baksho
+  labels:
+    app: iot-ai-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: iot-ai-service
+  template:
+    metadata:
+      labels:
+        app: iot-ai-service
+    spec:
+      containers:
+        - name: iot-ai-service
+          image: kather_baksho-iot-ai-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8089
+          envFrom:
+            - configMapRef:
+                name: kather-baksho-config
+            - secretRef:
+                name: kather-baksho-secret
+          env:
+            - name: PORT
+              value: "8089"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8089
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8089
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: iot-ai-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: iot-ai-service
+  ports:
+    - port: 8089
+      targetPort: 8089
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-ts
+  namespace: kather-baksho
+  labels:
+    app: worker-ts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker-ts
+  template:
+    metadata:
+      labels:
+        app: worker-ts
+    spec:
+      containers:
+        - name: worker-ts
+          image: kather_baksho-worker-ts:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+          envFrom:
+            - configMapRef:
+                name: kather-baksho-config
+            - secretRef:
+                name: kather-baksho-secret
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8083
+            initialDelaySeconds: 5
+            periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker-ts
+  namespace: kather-baksho
+spec:
+  selector:
+    app: worker-ts
+  ports:
+    - port: 8083
+      targetPort: 8083

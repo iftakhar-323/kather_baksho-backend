@@ -1,0 +1,259 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+  namespace: kather-baksho
+  labels:
+    app: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          command: ["redis-server", "--appendonly", "yes"]
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: redis-storage
+              mountPath: /data
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: redis-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo-deployment
+  namespace: kather-baksho
+  labels:
+    app: mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:6-jammy
+          ports:
+            - containerPort: 27017
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - name: mongo-storage
+              mountPath: /data/db
+      volumes:
+        - name: mongo-storage
+          persistentVolumeClaim:
+            claimName: mongo-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mosquitto-deployment
+  namespace: kather-baksho
+  labels:
+    app: mosquitto
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mosquitto
+  template:
+    metadata:
+      labels:
+        app: mosquitto
+    spec:
+      containers:
+        - name: mosquitto
+          image: eclipse-mosquitto:2
+          ports:
+            - containerPort: 1883
+            - containerPort: 9001
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mosquitto-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: mosquitto
+  ports:
+    - name: mqtt
+      port: 1883
+      targetPort: 1883
+    - name: websocket
+      port: 9001
+      targetPort: 9001
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger-deployment
+  namespace: kather-baksho
+  labels:
+    app: jaeger
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+    spec:
+      containers:
+        - name: jaeger
+          image: jaegertracing/all-in-one:latest
+          env:
+            - name: COLLECTOR_OTLP_ENABLED
+              value: "true"
+          ports:
+            - containerPort: 16686
+            - containerPort: 4318
+            - containerPort: 4317
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: jaeger
+  ports:
+    - name: ui
+      port: 16686
+      targetPort: 16686
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio-deployment
+  namespace: kather-baksho
+  labels:
+    app: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: minio/minio:latest
+          command: ["server", "/data", "--console-address", ":9001"]
+          env:
+            - name: MINIO_ROOT_USER
+              value: "admin"
+            - name: MINIO_ROOT_PASSWORD
+              value: "katherbox_secret_password"
+          ports:
+            - containerPort: 9000
+            - containerPort: 9001
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: minio-storage
+              mountPath: /data
+      volumes:
+        - name: minio-storage
+          persistentVolumeClaim:
+            claimName: minio-data-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-service
+  namespace: kather-baksho
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+    - name: console
+      port: 9001
+      targetPort: 9001

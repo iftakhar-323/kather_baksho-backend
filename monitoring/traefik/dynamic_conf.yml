@@ -1,0 +1,109 @@
+http:
+  routers:
+    frontend:
+      rule: "PathPrefix(`/`)"
+      entryPoints:
+        - "web"
+      service: "frontend-svc"
+      priority: 1
+
+    order:
+      rule: "PathPrefix(`/api`) || PathPrefix(`/health`) || PathPrefix(`/metrics`) || PathPrefix(`/ws`) || PathPrefix(`/docs`) || PathPrefix(`/swagger`)"
+      entryPoints:
+        - "web"
+      service: "order-svc"
+      priority: 10
+
+    backend:
+      rule: "PathPrefix(`/api/legacy-backend`)"
+      entryPoints:
+        - "web"
+      service: "order-svc"
+      priority: 5
+
+    worker:
+      rule: "PathPrefix(`/worker`)"
+      entryPoints:
+        - "web"
+      middlewares:
+        - "worker-strip"
+      service: "worker-svc"
+      priority: 20
+
+    iot-ai:
+      rule: "PathPrefix(`/api/iot`) || PathPrefix(`/api/ai`) || PathPrefix(`/api/ml`)"
+      entryPoints:
+        - "web"
+      service: "iot-ai-svc"
+      priority: 30
+
+    catalog:
+      rule: "PathPrefix(`/api/products`) || PathPrefix(`/api/categories`) || PathPrefix(`/api/media`) || PathPrefix(`/api/wishlist`) || PathPrefix(`/api/reviews`)"
+      entryPoints:
+        - "web"
+      service: "catalog-svc"
+      priority: 25
+
+    auth:
+      rule: "PathPrefix(`/api/auth`) || PathPrefix(`/api/addresses`)"
+      entryPoints:
+        - "web"
+      service: "auth-svc"
+      priority: 25
+
+    community-care:
+      rule: "PathPrefix(`/api/community`) || PathPrefix(`/api/blog`) || PathPrefix(`/api/journal`) || PathPrefix(`/api/care-schedule`) || PathPrefix(`/api/care-calendar`) || PathPrefix(`/api/consultations`) || PathPrefix(`/api/subscriptions`)"
+      entryPoints:
+        - "web"
+      service: "community-care-svc"
+      priority: 25
+
+  middlewares:
+    worker-strip:
+      stripPrefix:
+        prefixes:
+          - "/worker"
+
+  services:
+    frontend-svc:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:80"
+
+    order-svc:
+      loadBalancer:
+        servers:
+          - url: "http://order-service:8081"
+          - url: "http://backend:8081"
+
+    backend-svc:
+      loadBalancer:
+        servers:
+          - url: "http://order-service:8081"
+          - url: "http://backend:8081"
+
+    worker-svc:
+      loadBalancer:
+        servers:
+          - url: "http://worker-ts:8083"
+
+    iot-ai-svc:
+      loadBalancer:
+        servers:
+          - url: "http://iot-ai-service:8089"
+
+    catalog-svc:
+      loadBalancer:
+        servers:
+          - url: "http://catalog-service:8087"
+
+    auth-svc:
+      loadBalancer:
+        servers:
+          - url: "http://auth-service:8084"
+
+    community-care-svc:
+      loadBalancer:
+        servers:
+          - url: "http://community-care-service:8088"
+
