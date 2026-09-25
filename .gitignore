@@ -42,3 +42,7 @@ volumes/
 mongo_data/
 minio_data/
 redis_data/
+
+# Python Cache
+__pycache__/
+*.pyc
