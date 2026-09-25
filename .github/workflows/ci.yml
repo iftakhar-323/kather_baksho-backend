@@ -28,12 +28,21 @@ jobs:
           go-version: '1.22'
           check-latest: true
 
-      - name: Verify Go Module & Build ${{ matrix.service }}
+      - name: Verify Go Module & Vet Code
         run: |
           cd services/${{ matrix.service }}
           go mod tidy
-          CGO_ENABLED=0 go build -v ./...
-          go test -v ./... || true
+          go vet ./...
+
+      - name: Compile Go Binary (CGO_ENABLED=0)
+        run: |
+          cd services/${{ matrix.service }}
+          CGO_ENABLED=0 go build -ldflags="-w -s" -v ./...
+
+      - name: Run Unit Tests
+        run: |
+          cd services/${{ matrix.service }}
+          go test -v ./...
 
   test-worker-ts:
     name: Build TypeScript Worker
@@ -46,21 +55,46 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
+          cache: 'npm'
+          cache-dependency-path: services/worker-ts/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd services/worker-ts
+          npm ci
 
       - name: Build TypeScript Worker
         run: |
           cd services/worker-ts
-          npm ci
           npm run build
 
-  validate-docker-compose:
-    name: Validate Docker Compose Config
+      - name: Verify Worker Artifacts
+        run: |
+          test -f services/worker-ts/dist/index.js
+          echo "Verified services/worker-ts/dist/index.js exists"
+
+  validate-docker-compose-and-infra:
+    name: Validate Compose & Deployment Scripts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate Compose File
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify Test Suite Syntax
         run: |
+          python -m py_compile tests/e2e_test.py tests/stress_test.py
+
+      - name: Verify Deployment Script Syntax
+        run: |
+          bash -n scripts/deploy.sh
+
+      - name: Validate Local & Production Compose Configs
+        run: |
+          cp -n .env.production.example .env || true
           docker compose config -q
           docker compose -f docker-compose.prod.yml config -q
