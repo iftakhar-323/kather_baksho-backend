@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"kather_baksho/database"
@@ -27,6 +30,7 @@ func main() {
 	database.InitRedis()
 	database.ConnectMongoDB()
 	services.InitEventBus()
+	services.StartOutboxWorker()
 	services.InitStorage()
 	if err := database.DB.AutoMigrate(
 		&models.Cart{},
@@ -38,6 +42,7 @@ func main() {
 		&models.CorporateQuote{},
 		&models.CorporateOrder{},
 		&models.OrderEvent{},
+		&models.OutboxEvent{},
 		&models.ReturnRequest{},
 		&models.IdempotencyRecord{},
 		&models.Achievement{},
@@ -61,6 +66,8 @@ func main() {
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(middleware.SecurityHeaders())
+	router.Use(middleware.RequestSizeLimiter(10 << 20))
 	router.Use(middleware.OpenTelemetryMiddleware("order-service"))
 	router.Use(middleware.RequestIDMiddleware())
 	router.Use(middleware.StructuredLogger())
@@ -155,5 +162,27 @@ func main() {
 		port = ":" + port
 	}
 
-	router.Run(port)
+	srv := &http.Server{
+		Addr:    port,
+		Handler: router,
+	}
+
+	go func() {
+		log.Printf("[Order-Service] Microservice listening on port %s", port)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("[Order-Service] Server error: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("[Order-Service] Shutting down server gracefully...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatalf("[Order-Service] Server forced to shutdown: %v", err)
+	}
+	log.Println("[Order-Service] Server exited cleanly.")
 }

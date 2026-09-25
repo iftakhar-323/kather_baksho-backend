@@ -3,12 +3,20 @@ package routes
 import (
 	"kather_baksho/controllers"
 	"kather_baksho/middleware"
+	"kather_baksho/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 func ProductRoutes(router *gin.Engine) {
-	productGroup := router.Group("/api/products")
+	proxyMW := func(c *gin.Context) {
+		if utils.ProxyToService(c, "CATALOG_SERVICE_URL") {
+			c.Abort()
+			return
+		}
+	}
+
+	productGroup := router.Group("/api/products", proxyMW)
 	{
 		// List + filter + sort
 		productGroup.GET("", controllers.GetProducts)

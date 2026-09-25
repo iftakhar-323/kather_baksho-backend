@@ -141,11 +141,50 @@ func ConnectDatabase() {
 	if sqlDB, err := db.DB(); err == nil {
 		// SQLite permits many readers but only one writer; a single pooled
 		// connection plus busy_timeout avoids "database is locked" errors.
+		// ConnMaxLifetime=0 ensures the connection is never closed, keeping
+		// ATTACH DATABASE persistent indefinitely.
 		sqlDB.SetMaxOpenConns(1)
 		sqlDB.SetMaxIdleConns(1)
-		sqlDB.SetConnMaxLifetime(time.Hour)
+		sqlDB.SetConnMaxLifetime(0)
+		sqlDB.SetConnMaxIdleTime(0)
 	}
 
 	DB = db
 	log.Printf("[Database] Connected to SQLite database at %s", dbPath)
+}
+
+// EnsureAttached dynamically verifies and re-attaches catalog.db and auth.db
+// if they were detached due to any connection reset or migration.
+func EnsureAttached(db *gorm.DB) {
+	if db == nil || os.Getenv("DB_DRIVER") == "postgres" {
+		return
+	}
+
+	// Verify catalog_db attachment
+	var catCheck int64
+	if err := db.Raw("SELECT count(*) FROM catalog_db.sqlite_master").Scan(&catCheck).Error; err != nil {
+		catalogDbPath := os.Getenv("CATALOG_DB_PATH")
+		if catalogDbPath == "" {
+			catalogDbPath = "/app/data/catalog.db"
+		}
+		if _, statErr := os.Stat(catalogDbPath); statErr == nil {
+			if err := db.Exec(fmt.Sprintf("ATTACH DATABASE '%s' AS catalog_db", catalogDbPath)).Error; err == nil {
+				log.Printf("[Database] Re-attached catalog database: %s", catalogDbPath)
+			}
+		}
+	}
+
+	// Verify auth_db attachment
+	var authCheck int64
+	if err := db.Raw("SELECT count(*) FROM auth_db.sqlite_master").Scan(&authCheck).Error; err != nil {
+		authDbPath := os.Getenv("AUTH_DB_PATH")
+		if authDbPath == "" {
+			authDbPath = "/app/data/auth.db"
+		}
+		if _, statErr := os.Stat(authDbPath); statErr == nil {
+			if err := db.Exec(fmt.Sprintf("ATTACH DATABASE '%s' AS auth_db", authDbPath)).Error; err == nil {
+				log.Printf("[Database] Re-attached auth database: %s", authDbPath)
+			}
+		}
+	}
 }

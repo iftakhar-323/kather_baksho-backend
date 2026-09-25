@@ -46,6 +46,7 @@ func AddToCart(c *gin.Context) {
 	}
 
 	// Verify product exists
+	database.EnsureAttached(database.DB)
 	var product models.Product
 	if err := database.DB.First(&product, input.ProductID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
@@ -127,6 +128,7 @@ func UpdateCartItem(c *gin.Context) {
 		return
 	}
 
+	database.EnsureAttached(database.DB)
 	var product models.Product
 	if err := database.DB.First(&product, item.ProductID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})

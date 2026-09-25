@@ -36,6 +36,7 @@ func Checkout(c *gin.Context) {
 	var input CheckoutInput
 	_ = c.ShouldBindJSON(&input) // optional body
 
+	database.EnsureAttached(database.DB)
 	var cart models.Cart
 	if err := database.DB.Preload("Items.Product").Where("user_id = ?", userID).First(&cart).Error; err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cart not found"})
@@ -202,13 +203,17 @@ func Checkout(c *gin.Context) {
 		sms.SendAsync(sms.BuildOrderMessage(shipPhone, uintToStr(order.ID), fmt.Sprintf("%.2f", finalTotal), sms.EventOrderPlaced, "bn"))
 	}
 
-	// Publish asynchronous 'order.created' event to Redis Streams message bus
-	_, _ = services.PublishEvent("order.created", map[string]interface{}{
+	// Transactional outbox pattern: persist event to guarantee zero loss
+	eventPayload := map[string]interface{}{
 		"order_id":    order.ID,
 		"user_id":     userID,
 		"total_price": finalTotal,
 		"items_count": len(order.Items),
-	})
+	}
+	_ = services.SaveOutboxEvent(nil, "order.created", fmt.Sprint(order.ID), eventPayload)
+
+	// Publish asynchronous 'order.created' event to Redis Streams message bus
+	_, _ = services.PublishEvent("order.created", eventPayload)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"order":          order,

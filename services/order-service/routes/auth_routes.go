@@ -3,12 +3,20 @@ package routes
 import (
 	"kather_baksho/controllers"
 	"kather_baksho/middleware"
+	"kather_baksho/utils"
 
 	"github.com/gin-gonic/gin"
 )
 
 func AuthRoutes(router *gin.Engine) {
-	authGroup := router.Group("/api/auth")
+	proxyMW := func(c *gin.Context) {
+		if utils.ProxyToService(c, "AUTH_SERVICE_URL") {
+			c.Abort()
+			return
+		}
+	}
+
+	authGroup := router.Group("/api/auth", proxyMW)
 	{
 		authGroup.POST("/register", controllers.Register)
 		authGroup.POST("/login", controllers.Login)

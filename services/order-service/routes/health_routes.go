@@ -12,6 +12,8 @@ func HealthRoutes(router *gin.Engine) {
 	router.GET("/health", controllers.HealthCheck)
 	router.GET("/health/live", controllers.LivenessCheck)
 	router.GET("/health/ready", controllers.ReadinessCheck)
+	router.GET("/healthz", controllers.LivenessCheck)
+	router.GET("/readyz", controllers.ReadinessCheck)
 
 	// API-prefixed probes
 	api := router.Group("/api/health")
